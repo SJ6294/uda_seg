@@ -1,7 +1,7 @@
 # Binary segmentation dataset config for MAS3K
 
 dataset_type = 'CustomDataset'
-data_root = 'data'
+data_root = 'B:/3_exp/uda/data'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53],
     std=[58.395, 57.12, 57.375],
@@ -14,7 +14,7 @@ train_pipeline = [
     dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=1.0),
     dict(type='RandomFlip', prob=0.5),
     dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=255),
+    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=0),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),
 ]
@@ -23,7 +23,7 @@ val_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', binary_label=True, binary_threshold=128),
     dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=255),
+    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=0),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),
 ]
@@ -50,8 +50,8 @@ data = dict(
     train=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='MAS3K/train/high',
-        ann_dir='MAS3K/train/Mask',
+        img_dir='MAS3K/fold1/train/high',
+        ann_dir='MAS3K/fold1/train/Mask',
         img_suffix='.jpg',
         seg_map_suffix='.png',
         classes=('background', 'object'),
@@ -60,8 +60,8 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='MAS3K/valid/high',
-        ann_dir='MAS3K/valid/Mask',
+        img_dir='MAS3K/fold1/valid/high',
+        ann_dir='MAS3K/fold1/valid/Mask',
         img_suffix='.jpg',
         seg_map_suffix='.png',
         classes=('background', 'object'),
@@ -70,8 +70,8 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='MAS3K/valid/high',
-        ann_dir='MAS3K/valid/Mask',
+        img_dir='MAS3K/fold1/test/high',
+        ann_dir='MAS3K/fold1/test/Mask',
         img_suffix='.jpg',
         seg_map_suffix='.png',
         classes=('background', 'object'),
