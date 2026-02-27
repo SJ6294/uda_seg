@@ -75,6 +75,10 @@ Validation logs include:
 
 Training logs continue to include `loss` (train loss).
 
+## Batch setting
+
+- `samples_per_gpu=2` (so with 1 GPU, effective train batch size is 2).
+
 ## Example commands (single GPU)
 
 ```bash
