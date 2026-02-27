@@ -105,9 +105,13 @@ class LoadAnnotations(object):
 
     def __init__(self,
                  reduce_zero_label=False,
+                 binary_label=False,
+                 binary_threshold=128,
                  file_client_args=dict(backend='disk'),
                  imdecode_backend='pillow'):
         self.reduce_zero_label = reduce_zero_label
+        self.binary_label = binary_label
+        self.binary_threshold = binary_threshold
         self.file_client_args = file_client_args.copy()
         self.file_client = None
         self.imdecode_backend = imdecode_backend
@@ -134,6 +138,11 @@ class LoadAnnotations(object):
         gt_semantic_seg = mmcv.imfrombytes(
             img_bytes, flag='unchanged',
             backend=self.imdecode_backend).squeeze().astype(np.uint8)
+
+        if self.binary_label:
+            gt_semantic_seg = (gt_semantic_seg >=
+                               self.binary_threshold).astype(np.uint8)
+
         # modify if custom classes
         if results.get('label_map', None) is not None:
             for old_id, new_id in results['label_map'].items():
@@ -151,5 +160,7 @@ class LoadAnnotations(object):
     def __repr__(self):
         repr_str = self.__class__.__name__
         repr_str += f'(reduce_zero_label={self.reduce_zero_label},'
+        repr_str += f'binary_label={self.binary_label},'
+        repr_str += f'binary_threshold={self.binary_threshold},'
         repr_str += f"imdecode_backend='{self.imdecode_backend}')"
         return repr_str
