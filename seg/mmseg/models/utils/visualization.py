@@ -104,6 +104,10 @@ def prepare_debug_out(title, out, mean, std):
         if mean is not None:
             out = torch.clamp(denorm(out, mean, std), 0, 1)[0]
         out = dict(title=title, img=out)
+    elif out.shape[0] == 2:
+        out = torch.softmax(torch.from_numpy(out), dim=0).numpy()
+        out = np.argmax(out, axis=0).astype(np.float32)
+        out = dict(title=title, img=out, cmap='gray', vmin=0, vmax=1)
     elif out.shape[0] > 3:
         out = torch.softmax(torch.from_numpy(out), dim=0).numpy()
         out = np.argmax(out, axis=0)
