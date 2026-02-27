@@ -11,11 +11,10 @@ crop_size = (512, 512)
 source_train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', binary_label=True, binary_threshold=128),
-    dict(type='Resize', img_scale=(2048, 512), ratio_range=(0.5, 2.0)),
     dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=1.0),
     dict(type='RandomFlip', prob=0.5),
     dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=255),
+    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=0),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),
 ]
@@ -23,11 +22,10 @@ source_train_pipeline = [
 target_train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', binary_label=True, binary_threshold=128),
-    dict(type='Resize', img_scale=(2048, 512), ratio_range=(0.5, 2.0)),
     dict(type='RandomCrop', crop_size=crop_size),
     dict(type='RandomFlip', prob=0.5),
     dict(type='Normalize', **img_norm_cfg),
-    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=255),
+    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=0),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),
 ]
@@ -36,7 +34,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(2048, 512),
+        img_scale=(512, 512),
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -48,8 +46,8 @@ test_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=4,
+    samples_per_gpu=1,
+    workers_per_gpu=2,
     train=dict(
         type='UDADataset',
         source=dict(
@@ -57,7 +55,7 @@ data = dict(
             data_root=data_root,
             img_dir='MAS3K/train/high',
             ann_dir='MAS3K/train/Mask',
-            img_suffix='.png',
+            img_suffix='.jpg',
             seg_map_suffix='.png',
             classes=('background', 'object'),
             palette=[[0, 0, 0], [255, 255, 255]],
@@ -67,7 +65,7 @@ data = dict(
             data_root=data_root,
             img_dir='Deepfish/train/high',
             ann_dir='Deepfish/train/Mask',
-            img_suffix='.png',
+            img_suffix='.jpg',
             seg_map_suffix='.png',
             classes=('background', 'object'),
             palette=[[0, 0, 0], [255, 255, 255]],
@@ -77,7 +75,7 @@ data = dict(
         data_root=data_root,
         img_dir='Deepfish/valid/high',
         ann_dir='Deepfish/valid/Mask',
-        img_suffix='.png',
+        img_suffix='.jpg',
         seg_map_suffix='.png',
         classes=('background', 'object'),
         palette=[[0, 0, 0], [255, 255, 255]],
@@ -87,7 +85,7 @@ data = dict(
         data_root=data_root,
         img_dir='Deepfish/valid/high',
         ann_dir='Deepfish/valid/Mask',
-        img_suffix='.png',
+        img_suffix='.jpg',
         seg_map_suffix='.png',
         classes=('background', 'object'),
         palette=[[0, 0, 0], [255, 255, 255]],
