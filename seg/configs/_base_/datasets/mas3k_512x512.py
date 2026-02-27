@@ -19,6 +19,15 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),
 ]
 
+val_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(type='LoadAnnotations', binary_label=True, binary_threshold=128),
+    dict(type='Normalize', **img_norm_cfg),
+    dict(type='Pad', size=crop_size, pad_val=0, seg_pad_val=0),
+    dict(type='DefaultFormatBundle'),
+    dict(type='Collect', keys=['img', 'gt_semantic_seg']),
+]
+
 test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
@@ -35,6 +44,7 @@ test_pipeline = [
 ]
 
 data = dict(
+    result_dir='result',
     samples_per_gpu=1,
     workers_per_gpu=2,
     train=dict(
@@ -56,7 +66,7 @@ data = dict(
         seg_map_suffix='.png',
         classes=('background', 'object'),
         palette=[[0, 0, 0], [255, 255, 255]],
-        pipeline=test_pipeline),
+        pipeline=val_pipeline),
     test=dict(
         type=dataset_type,
         data_root=data_root,

@@ -56,6 +56,25 @@ If your dataset is in `B:\3_exp\uda\data`, either copy or symlink it to
 - `deeplabv3plus_r50_deepfish_target_only.py`
 - `segformer_b5_mas3k_to_deepfish_uda.py`
 
+
+## Validation outputs and logging
+
+During validation, the trainer now saves concatenated visualization images to
+`<work_dir>/result/` in the order:
+
+- original image
+- prediction (black/white)
+- ground truth (black/white)
+
+Validation logs include:
+
+- `IoU.background`
+- `IoU.object`
+- `mIoU`
+- `val_loss`
+
+Training logs continue to include `loss` (train loss).
+
 ## Example commands (single GPU)
 
 ```bash
