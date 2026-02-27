@@ -2,7 +2,6 @@ _base_ = [
     '../_base_/default_runtime.py',
     '../_base_/models/deeplabv3plus_r50-d8.py',
     '../_base_/datasets/deepfish_512x512.py',
-    '../_base_/uda/dacs_srconly.py',
     '../_base_/schedules/sgd.py',
     '../_base_/schedules/poly10.py'
 ]

@@ -42,6 +42,12 @@ Image suffix is `.jpg` and label suffix is `.png`.
 If your dataset is in `B:\3_exp\uda\data`, either copy or symlink it to
 `/workspace/uda_seg/seg/data`.
 
+
+## Supervised vs UDA configs
+
+- `*_source_only.py` and `*_target_only.py` are now **pure supervised** configs (no `uda` block, no DACS wrapper).
+- `segformer_b5_mas3k_to_deepfish_uda.py` is the only UDA config in this folder.
+
 ## Provided configs
 
 - `segformer_b5_mas3k_source_only.py`
