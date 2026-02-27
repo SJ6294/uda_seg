@@ -23,10 +23,10 @@ For train pipelines in these configs:
 
 - **No resize is used**.
 - `RandomCrop(crop_size=(512, 512))` is applied directly to original images.
-- `Pad(size=(512, 512), seg_pad_val=0)` is applied after crop.
+- `Pad(size=(512, 512), seg_pad_val=255)` is applied after crop.
 
 Therefore if an image/mask is smaller than 512 in any dimension, padded mask
-pixels are treated as **background class (0)**.
+pixels are treated as **ignore label (255)**, so they are excluded from loss and mIoU.
 
 ## Data layout expected by configs
 
