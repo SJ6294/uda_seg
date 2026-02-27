@@ -112,7 +112,7 @@ def train_segmentor(model,
 
     # register eval hooks
     if validate:
-        val_dataset = build_dataset(cfg.data.val, dict(test_mode=True))
+        val_dataset = build_dataset(cfg.data.val, dict(test_mode=False))
         val_dataloader = build_dataloader(
             val_dataset,
             samples_per_gpu=1,
