@@ -34,6 +34,29 @@ def np2tmp(array, temp_file_name=None, tmpdir=None):
     return temp_file_name
 
 
+
+
+def _extract_img_metas(data):
+    img_metas = data.get('img_metas', None)
+    if img_metas is None:
+        return []
+    payload = img_metas
+    if isinstance(payload, list) and len(payload) > 0:
+        payload = payload[0]
+    if hasattr(payload, 'data'):
+        payload = payload.data[0]
+    if isinstance(payload, dict):
+        return [payload]
+    if isinstance(payload, (list, tuple)):
+        if len(payload) == 0:
+            return []
+        if isinstance(payload[0], dict):
+            return list(payload)
+        if isinstance(payload[0], (list, tuple)) and len(payload[0]) > 0 and                 isinstance(payload[0][0], dict):
+            return list(payload[0])
+    return []
+
+
 def single_gpu_test(model,
                     data_loader,
                     show=False,
@@ -72,6 +95,7 @@ def single_gpu_test(model,
         mmcv.mkdir_or_exist(concat_out_dir)
 
     dataset_index = 0
+
     for i, data in enumerate(data_loader):
         model_data = data
         # Validation dataloaders that are built with test_mode=False provide
@@ -81,27 +105,8 @@ def single_gpu_test(model,
             model_data = data.copy()
             model_data['img'] = [data['img']]
 
-            # forward_test expects img_metas as List[List[dict]].
-            meta_source = data.get('img_metas', None)
-            meta_payload = meta_source
-            if isinstance(meta_source, list) and len(meta_source) > 0:
-                meta_payload = meta_source[0]
-            if hasattr(meta_payload, 'data'):
-                meta_payload = meta_payload.data[0]
-
-            if isinstance(meta_payload, dict):
-                model_data['img_metas'] = [[meta_payload]]
-            elif isinstance(meta_payload, (list, tuple)):
-                if len(meta_payload) == 0:
-                    model_data['img_metas'] = [[]]
-                elif isinstance(meta_payload[0], dict):
-                    model_data['img_metas'] = [list(meta_payload)]
-                elif isinstance(meta_payload[0], (list, tuple)):
-                    model_data['img_metas'] = [list(x) for x in meta_payload]
-                else:
-                    model_data['img_metas'] = [[meta_payload]]
-            else:
-                model_data['img_metas'] = [[meta_payload]]
+            meta_list = _extract_img_metas(data)
+            model_data['img_metas'] = [meta_list]
 
         infer_data = dict(
             img=model_data['img'], img_metas=model_data['img_metas'])
@@ -109,8 +114,8 @@ def single_gpu_test(model,
             result = model(return_loss=False, **infer_data)
 
         if show or out_dir:
-            img_tensor = data['img'][0]
-            img_metas = data['img_metas'][0].data[0]
+            img_tensor = data['img'][0] if isinstance(data['img'], list) else data['img']
+            img_metas = _extract_img_metas(data)
             imgs = tensor2imgs(img_tensor, **img_metas[0]['img_norm_cfg'])
             assert len(imgs) == len(img_metas)
 
@@ -151,7 +156,7 @@ def single_gpu_test(model,
 
         batch_size = len(result)
         if save_concat:
-            img_metas = data['img_metas'][0].data[0]
+            img_metas = _extract_img_metas(data)
             for b in range(batch_size):
                 img_meta = img_metas[b]
                 sample_idx = dataset_index + b
@@ -229,12 +234,6 @@ def multi_gpu_test(model,
     if efficient_test:
         mmcv.mkdir_or_exist('.efficient_test')
 
-    if save_concat:
-        if concat_out_dir is None:
-            concat_out_dir = 'result'
-        mmcv.mkdir_or_exist(concat_out_dir)
-
-    dataset_index = 0
     for i, data in enumerate(data_loader):
         with torch.no_grad():
             result = model(return_loss=False, rescale=True, **data)
