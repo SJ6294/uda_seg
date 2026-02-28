@@ -103,8 +103,10 @@ def single_gpu_test(model,
             else:
                 model_data['img_metas'] = [[meta_payload]]
 
+        infer_data = dict(
+            img=model_data['img'], img_metas=model_data['img_metas'])
         with torch.no_grad():
-            result = model(return_loss=False, **model_data)
+            result = model(return_loss=False, **infer_data)
 
         if show or out_dir:
             img_tensor = data['img'][0]
