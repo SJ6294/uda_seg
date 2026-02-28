@@ -83,7 +83,13 @@ def single_gpu_test(model,
             if isinstance(data.get('img_metas', None), list) and len(
                     data['img_metas']) > 0 and hasattr(data['img_metas'][0],
                                                        'data'):
-                model_data['img_metas'] = [data['img_metas'][0].data[0]]
+                meta_payload = data['img_metas'][0].data[0]
+                # forward_test expects img_metas as List[List[dict]].
+                # Depending on collate path, payload can be dict or list[dict].
+                if isinstance(meta_payload, dict):
+                    model_data['img_metas'] = [[meta_payload]]
+                else:
+                    model_data['img_metas'] = [meta_payload]
 
         with torch.no_grad():
             result = model(return_loss=False, **model_data)
