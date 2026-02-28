@@ -80,16 +80,28 @@ def single_gpu_test(model,
         if not isinstance(data.get('img', None), list):
             model_data = data.copy()
             model_data['img'] = [data['img']]
-            if isinstance(data.get('img_metas', None), list) and len(
-                    data['img_metas']) > 0 and hasattr(data['img_metas'][0],
-                                                       'data'):
-                meta_payload = data['img_metas'][0].data[0]
-                # forward_test expects img_metas as List[List[dict]].
-                # Depending on collate path, payload can be dict or list[dict].
-                if isinstance(meta_payload, dict):
-                    model_data['img_metas'] = [[meta_payload]]
+
+            # forward_test expects img_metas as List[List[dict]].
+            meta_source = data.get('img_metas', None)
+            meta_payload = meta_source
+            if isinstance(meta_source, list) and len(meta_source) > 0:
+                meta_payload = meta_source[0]
+            if hasattr(meta_payload, 'data'):
+                meta_payload = meta_payload.data[0]
+
+            if isinstance(meta_payload, dict):
+                model_data['img_metas'] = [[meta_payload]]
+            elif isinstance(meta_payload, (list, tuple)):
+                if len(meta_payload) == 0:
+                    model_data['img_metas'] = [[]]
+                elif isinstance(meta_payload[0], dict):
+                    model_data['img_metas'] = [list(meta_payload)]
+                elif isinstance(meta_payload[0], (list, tuple)):
+                    model_data['img_metas'] = [list(x) for x in meta_payload]
                 else:
-                    model_data['img_metas'] = [meta_payload]
+                    model_data['img_metas'] = [[meta_payload]]
+            else:
+                model_data['img_metas'] = [[meta_payload]]
 
         with torch.no_grad():
             result = model(return_loss=False, **model_data)
