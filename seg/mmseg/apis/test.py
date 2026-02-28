@@ -1,6 +1,7 @@
 # Obtained from: https://github.com/open-mmlab/mmsegmentation/tree/v0.16.0
 # Modifications: Support debug_output_attention
 
+import os
 import os.path as osp
 import tempfile
 
@@ -33,12 +34,37 @@ def np2tmp(array, temp_file_name=None, tmpdir=None):
     return temp_file_name
 
 
+
+
+def _extract_img_metas(data):
+    img_metas = data.get('img_metas', None)
+    if img_metas is None:
+        return []
+    payload = img_metas
+    if isinstance(payload, list) and len(payload) > 0:
+        payload = payload[0]
+    if hasattr(payload, 'data'):
+        payload = payload.data[0]
+    if isinstance(payload, dict):
+        return [payload]
+    if isinstance(payload, (list, tuple)):
+        if len(payload) == 0:
+            return []
+        if isinstance(payload[0], dict):
+            return list(payload)
+        if isinstance(payload[0], (list, tuple)) and len(payload[0]) > 0 and                 isinstance(payload[0][0], dict):
+            return list(payload[0])
+    return []
+
+
 def single_gpu_test(model,
                     data_loader,
                     show=False,
                     out_dir=None,
                     efficient_test=False,
-                    opacity=0.5):
+                    opacity=0.5,
+                    save_concat=False,
+                    concat_out_dir=None):
     """Test with single GPU.
 
     Args:
@@ -62,13 +88,34 @@ def single_gpu_test(model,
     prog_bar = mmcv.ProgressBar(len(dataset))
     if efficient_test:
         mmcv.mkdir_or_exist('.efficient_test')
+
+    if save_concat:
+        if concat_out_dir is None:
+            concat_out_dir = 'result'
+        mmcv.mkdir_or_exist(concat_out_dir)
+
+    dataset_index = 0
+
     for i, data in enumerate(data_loader):
+        model_data = data
+        # Validation dataloaders that are built with test_mode=False provide
+        # train-style tensors instead of test-time list wrappers.
+        # forward_test expects list inputs, so wrap here for compatibility.
+        if not isinstance(data.get('img', None), list):
+            model_data = data.copy()
+            model_data['img'] = [data['img']]
+
+            meta_list = _extract_img_metas(data)
+            model_data['img_metas'] = [meta_list]
+
+        infer_data = dict(
+            img=model_data['img'], img_metas=model_data['img_metas'])
         with torch.no_grad():
-            result = model(return_loss=False, **data)
+            result = model(return_loss=False, **infer_data)
 
         if show or out_dir:
-            img_tensor = data['img'][0]
-            img_metas = data['img_metas'][0].data[0]
+            img_tensor = data['img'][0] if isinstance(data['img'], list) else data['img']
+            img_metas = _extract_img_metas(data)
             imgs = tensor2imgs(img_tensor, **img_metas[0]['img_norm_cfg'])
             assert len(imgs) == len(img_metas)
 
@@ -108,6 +155,44 @@ def single_gpu_test(model,
             results.append(result)
 
         batch_size = len(result)
+        if save_concat:
+            img_metas = _extract_img_metas(data)
+            for b in range(batch_size):
+                img_meta = img_metas[b]
+                sample_idx = dataset_index + b
+                ann_rel_path = None
+                if hasattr(dataset, 'img_infos') and sample_idx < len(dataset.img_infos):
+                    ann_rel_path = dataset.img_infos[sample_idx].get('ann', {}).get('seg_map')
+
+                if ann_rel_path is None:
+                    continue
+
+                gt_path = osp.join(dataset.ann_dir, ann_rel_path)
+                gt = mmcv.imread(gt_path, flag='unchanged')
+                if gt.ndim == 3:
+                    gt = gt[:, :, 0]
+                gt = (gt >= 128).astype(np.uint8)
+
+                pred = result[b]
+                if isinstance(pred, str):
+                    pred = np.load(pred)
+                pred = pred.astype(np.uint8)
+
+                ori_img = mmcv.imread(img_meta['filename'], flag='color')
+                if ori_img is None:
+                    continue
+                h, w = gt.shape[:2]
+                ori_img = mmcv.imresize(ori_img, (w, h))
+
+                pred_vis = np.stack([pred * 255, pred * 255, pred * 255], axis=-1)
+                gt_vis = np.stack([gt * 255, gt * 255, gt * 255], axis=-1)
+                concat_img = np.concatenate([ori_img, pred_vis, gt_vis], axis=1)
+
+                base = osp.splitext(osp.basename(img_meta['ori_filename']))[0]
+                save_path = osp.join(concat_out_dir, f'{base}.png')
+                mmcv.imwrite(concat_img, save_path)
+
+        dataset_index += batch_size
         for _ in range(batch_size):
             prog_bar.update()
     return results
@@ -148,6 +233,7 @@ def multi_gpu_test(model,
         prog_bar = mmcv.ProgressBar(len(dataset))
     if efficient_test:
         mmcv.mkdir_or_exist('.efficient_test')
+
     for i, data in enumerate(data_loader):
         with torch.no_grad():
             result = model(return_loss=False, rescale=True, **data)
