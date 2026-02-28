@@ -73,8 +73,20 @@ def single_gpu_test(model,
 
     dataset_index = 0
     for i, data in enumerate(data_loader):
+        model_data = data
+        # Validation dataloaders that are built with test_mode=False provide
+        # train-style tensors instead of test-time list wrappers.
+        # forward_test expects list inputs, so wrap here for compatibility.
+        if not isinstance(data.get('img', None), list):
+            model_data = data.copy()
+            model_data['img'] = [data['img']]
+            if isinstance(data.get('img_metas', None), list) and len(
+                    data['img_metas']) > 0 and hasattr(data['img_metas'][0],
+                                                       'data'):
+                model_data['img_metas'] = [data['img_metas'][0].data[0]]
+
         with torch.no_grad():
-            result = model(return_loss=False, **data)
+            result = model(return_loss=False, **model_data)
 
         if show or out_dir:
             img_tensor = data['img'][0]
