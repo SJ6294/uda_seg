@@ -57,6 +57,11 @@ If your dataset is in `B:\3_exp\uda\data`, either copy or symlink it to
 - `segformer_b5_mas3k_to_deepfish_uda.py`
 
 
+## Validation preprocessing
+
+- Validation pipeline pads with `size_divisor=32` (not fixed 512) to avoid OpenCV pad errors on larger images.
+- Padding label uses `255` so padded regions are ignored in loss and mIoU.
+
 ## Validation outputs and logging
 
 During validation, the trainer now saves concatenated visualization images to
