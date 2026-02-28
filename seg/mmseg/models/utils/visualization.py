@@ -104,15 +104,22 @@ def prepare_debug_out(title, out, mean, std):
         if mean is not None:
             out = torch.clamp(denorm(out, mean, std), 0, 1)[0]
         out = dict(title=title, img=out)
+    elif out.shape[0] == 2:
+        out = torch.softmax(torch.from_numpy(out), dim=0).numpy()
+        out = np.argmax(out, axis=0).astype(np.float32)
+        out = dict(title=title, img=out, cmap='gray', vmin=0, vmax=1)
     elif out.shape[0] > 3:
         out = torch.softmax(torch.from_numpy(out), dim=0).numpy()
         out = np.argmax(out, axis=0)
         out = dict(title=title, img=out, cmap='cityscapes')
     elif out.shape[0] == 1:
-        if is_integer_array(out) and np.max(out) > 1:
-            out = dict(title=title, img=out[0], cmap='cityscapes')
+        if is_integer_array(out):
+            if np.max(out) > 1:
+                out = dict(title=title, img=out[0], cmap='cityscapes')
+            else:
+                out = dict(title=title, img=out[0], cmap='gray', vmin=0, vmax=1)
         elif np.min(out) >= 0 and np.max(out) <= 1:
-            out = dict(title=title, img=out[0], cmap='viridis', vmin=0, vmax=1)
+            out = dict(title=title, img=out[0], cmap='gray', vmin=0, vmax=1)
         else:
             out = dict(
                 title=title, img=out[0], cmap='viridis', range_in_title=True)
