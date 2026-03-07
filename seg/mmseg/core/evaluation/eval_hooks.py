@@ -39,13 +39,15 @@ class EvalHook(_EvalHook):
         from mmseg.apis import single_gpu_test
         result_dir = osp.join(runner.work_dir, self.result_dir)
 
+        concat_prefix = f'iter_{runner.iter:06d}'
         results = single_gpu_test(
             runner.model,
             self.dataloader,
             show=False,
             efficient_test=self.efficient_test,
             save_concat=True,
-            concat_out_dir=result_dir)
+            concat_out_dir=result_dir,
+            concat_prefix=concat_prefix)
         runner.log_buffer.output['eval_iter_num'] = len(self.dataloader)
         key_score = self.evaluate(runner, results)
 
