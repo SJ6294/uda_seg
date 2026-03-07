@@ -15,6 +15,7 @@ This folder rebuilds the standalone `dataset_ce2ch_crop.py` +
   - keep-ratio downscale only (no upscaling)
   - center padding to `512x512`
 - Padded segmentation labels are `255` (ignore index).
+- Validation concat images are saved in the standalone order: `[image | gt | pred]`.
 
 ## Configs
 
