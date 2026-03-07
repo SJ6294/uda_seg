@@ -55,7 +55,7 @@ def random_crop_or_pad(
     image: Image.Image,
     mask: Image.Image,
     out_size: int = 512,
-) -> Tuple[Image.Image, Image.Image]:
+) -> Tuple[Image.Image, Image.Image, Tuple[int, int, int, int]]:
     w, h = image.size
 
     top = random.randint(0, h - out_size) if h > out_size else 0
@@ -78,7 +78,8 @@ def random_crop_or_pad(
     canvas_img.paste(image_crop, (paste_x, paste_y))
     canvas_mask.paste(mask_crop, (paste_x, paste_y))
 
-    return canvas_img, canvas_mask
+    valid_box = (paste_x, paste_y, paste_x + crop_w, paste_y + crop_h)
+    return canvas_img, canvas_mask, valid_box
 
 
 def resize_and_pad_keep_ratio(
@@ -138,14 +139,15 @@ class CamObjDataset(Dataset):
         image, gt = _random_horizontal_flip(image, gt, p=0.5)
         image, gt = _random_rotate(image, gt, p=0.2, degrees=15)
 
-        image, gt = random_crop_or_pad(image, gt, out_size=self.size)
+        image, gt, valid_box = random_crop_or_pad(image, gt, out_size=self.size)
 
         image = self.img_transform(image)
         gt = np.array(gt, dtype=np.uint8)
 
         gt_bin = np.full_like(gt, fill_value=IGNORE_INDEX, dtype=np.int64)
-        valid = gt != IGNORE_INDEX
-        gt_bin[valid] = (gt[valid] > 0).astype(np.int64)
+        x1, y1, x2, y2 = valid_box
+        valid_region = gt[y1:y2, x1:x2]
+        gt_bin[y1:y2, x1:x2] = (valid_region > 0).astype(np.int64)
 
         gt = torch.from_numpy(gt_bin).long()
         return image, gt
@@ -175,8 +177,10 @@ class test_dataset(Dataset):
         gt = np.array(gt, dtype=np.uint8)
 
         gt_bin = np.full_like(gt, fill_value=IGNORE_INDEX, dtype=np.int64)
-        valid = gt != IGNORE_INDEX
-        gt_bin[valid] = (gt[valid] > 0).astype(np.int64)
+        x1, y1 = meta["pad_x"], meta["pad_y"]
+        x2, y2 = x1 + meta["new_w"], y1 + meta["new_h"]
+        valid_region = gt[y1:y2, x1:x2]
+        gt_bin[y1:y2, x1:x2] = (valid_region > 0).astype(np.int64)
 
         gt = torch.from_numpy(gt_bin).long()
 

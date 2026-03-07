@@ -38,7 +38,6 @@ def _two_class_logits_to_pred(logits_2ch: torch.Tensor) -> torch.Tensor:
 def _binary_metrics_from_pred(
     gt_long: torch.Tensor,
     pred_long: torch.Tensor,
-    eps: float = 1e-7,
     ignore_index: int = 255,
 ):
     if gt_long.ndim != 3:
@@ -46,51 +45,37 @@ def _binary_metrics_from_pred(
     if pred_long.ndim != 3:
         raise ValueError(f"Expected pred shape (B,H,W), got {tuple(pred_long.shape)}")
 
-    obj_ious, bg_ious, mious, dices = [], [], [], []
-
-    for b in range(gt_long.size(0)):
-        gt_b = gt_long[b]
-        pred_b = pred_long[b]
-
-        valid = gt_b != ignore_index
-        if valid.sum() == 0:
-            continue
-
-        gt_b = gt_b[valid]
-        pred_b = pred_b[valid]
-
-        gt_obj = gt_b == 1
-        gt_bg = ~gt_obj
-        pred_obj = pred_b == 1
-        pred_bg = ~pred_obj
-
-        inter_obj = (pred_obj & gt_obj).sum().float()
-        union_obj = (pred_obj | gt_obj).sum().float()
-        iou_obj = (inter_obj + eps) / (union_obj + eps)
-
-        inter_bg = (pred_bg & gt_bg).sum().float()
-        union_bg = (pred_bg | gt_bg).sum().float()
-        iou_bg = (inter_bg + eps) / (union_bg + eps)
-
-        miou = 0.5 * (iou_bg + iou_obj)
-
-        pred_obj_sum = pred_obj.sum().float()
-        gt_obj_sum = gt_obj.sum().float()
-        dice = (2 * inter_obj + eps) / (pred_obj_sum + gt_obj_sum + eps)
-
-        obj_ious.append(iou_obj)
-        bg_ious.append(iou_bg)
-        mious.append(miou)
-        dices.append(dice)
-
-    if not mious:
+    valid = gt_long != ignore_index
+    if valid.sum() == 0:
         return {"object_iou": 0.0, "background_iou": 0.0, "miou": 0.0, "dice": 0.0}
 
+    gt = gt_long[valid]
+    pred = pred_long[valid]
+
+    gt_obj = gt == 1
+    pred_obj = pred == 1
+    gt_bg = ~gt_obj
+    pred_bg = ~pred_obj
+
+    tp = (pred_obj & gt_obj).sum().float()
+    tn = (pred_bg & gt_bg).sum().float()
+    fp = (pred_obj & gt_bg).sum().float()
+    fn = (pred_bg & gt_obj).sum().float()
+
+    obj_union = tp + fp + fn
+    bg_union = tn + fp + fn
+    obj_iou = (tp / obj_union).item() if obj_union > 0 else 0.0
+    bg_iou = (tn / bg_union).item() if bg_union > 0 else 0.0
+
+    obj_denom = 2 * tp + fp + fn
+    dice = (2 * tp / obj_denom).item() if obj_denom > 0 else 0.0
+    miou = 0.5 * (obj_iou + bg_iou)
+
     return {
-        "object_iou": torch.stack(obj_ious).mean().item(),
-        "background_iou": torch.stack(bg_ious).mean().item(),
-        "miou": torch.stack(mious).mean().item(),
-        "dice": torch.stack(dices).mean().item(),
+        "object_iou": float(obj_iou),
+        "background_iou": float(bg_iou),
+        "miou": float(miou),
+        "dice": float(dice),
     }
 
 
@@ -427,6 +412,11 @@ def main():
     )
 
     opt = parser.parse_args()
+
+    if os.path.abspath(opt.train_root) == os.path.abspath(opt.valid_root):
+        logging.warning(
+            "train_root and valid_root are identical. Validation metrics may be over-optimistic due to data leakage."
+        )
 
     model = SegformerForSemanticSegmentation.from_pretrained(
         "nvidia/mit-b3", num_labels=2, ignore_mismatched_sizes=True
