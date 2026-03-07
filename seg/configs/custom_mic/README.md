@@ -5,7 +5,7 @@ This folder rebuilds the standalone `dataset_ce2ch_crop.py` +
 
 ## Key points
 
-- Uses **DACS + MIC** (`mask_mode='separatetrgaug'`, block mask 64, ratio 0.7).
+- Supports both **DACS+MIC** and **MinEnt+MIC (without DACS/HRDA)**.
 - Uses a custom train transform that reproduces:
   - random horizontal flip (p=0.5)
   - random rotate (p=0.2, degree=15)
@@ -18,13 +18,18 @@ This folder rebuilds the standalone `dataset_ce2ch_crop.py` +
 
 ## Configs
 
-- `segformer_b5_mas3k_to_deepfish_mic_sota.py`
+- `segformer_b5_mas3k_to_deepfish_mic_sota.py` (DACS + MIC)
+- `segformer_b5_mas3k_to_deepfish_minent_mic_sota.py` (MinEnt + MIC, no DACS/HRDA)
 
 ## Run
 
 ```bash
 cd /workspace/uda_seg/seg
+# DACS + MIC
 python tools/train.py configs/custom_mic/segformer_b5_mas3k_to_deepfish_mic_sota.py --gpu-id 0
+
+# MinEnt + MIC (without DACS/HRDA)
+python tools/train.py configs/custom_mic/segformer_b5_mas3k_to_deepfish_minent_mic_sota.py --gpu-id 0
 ```
 
 ## Data layout
