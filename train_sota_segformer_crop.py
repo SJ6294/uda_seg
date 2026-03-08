@@ -79,6 +79,16 @@ def _binary_metrics_from_pred(
     }
 
 
+
+
+def log_pretrained_status_hf(model) -> None:
+    src = getattr(model.config, '_name_or_path', 'unknown')
+    first_param = next(model.parameters())
+    mean_abs = float(first_param.detach().abs().mean().cpu().item())
+    std = float(first_param.detach().std().cpu().item())
+    print(f"[Pretrained check] HuggingFace source: {src}")
+    print(f"[Pretrained check] first-param stats mean_abs={mean_abs:.6e}, std={std:.6e}")
+
 def _meta_scalar(meta, key: str, idx: int) -> int:
     value = meta[key]
     if isinstance(value, torch.Tensor):
@@ -421,6 +431,7 @@ def main():
     model = SegformerForSemanticSegmentation.from_pretrained(
         "nvidia/mit-b3", num_labels=2, ignore_mismatched_sizes=True
     )
+    log_pretrained_status_hf(model)
 
     trainer = Trainer(opt, model)
     trainer.fit()

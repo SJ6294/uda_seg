@@ -62,12 +62,78 @@ def parse_args(args):
         default='none',
         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument(
+        '--check-pretrained',
+        action='store_true',
+        help='Fail fast if configured pretrained checkpoint does not exist')
     args = parser.parse_args(args)
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
 
     return args
 
+
+
+
+def _extract_pretrained_path(cfg):
+    model_cfg = cfg.get('model', {})
+    if isinstance(model_cfg, dict):
+        if model_cfg.get('pretrained', None) is not None:
+            return model_cfg.get('pretrained')
+        inner = model_cfg.get('model', None)
+        if isinstance(inner, dict) and inner.get('pretrained', None) is not None:
+            return inner.get('pretrained')
+    return None
+
+
+def _log_pretrained_check(cfg, logger, strict=False):
+    pretrained = _extract_pretrained_path(cfg)
+    if not pretrained:
+        logger.warning('Pretrained check: no `model.pretrained` path found in config.')
+        if strict:
+            raise RuntimeError('Pretrained check failed: no pretrained path in config.')
+        return
+
+    if osp.isabs(pretrained):
+        resolved = pretrained
+    else:
+        resolved = osp.join(osp.dirname(__file__), '..', pretrained)
+        resolved = osp.abspath(resolved)
+
+    exists = osp.exists(resolved)
+    logger.info(f'Pretrained check: config pretrained={pretrained}')
+    logger.info(f'Pretrained check: resolved path={resolved}')
+    logger.info(f'Pretrained check: exists={exists}')
+
+    if strict and not exists:
+        raise FileNotFoundError(
+            f'Pretrained check failed: expected checkpoint not found at {resolved}')
+
+
+def _log_weight_fingerprint(model, logger):
+    base = model.module if hasattr(model, 'module') else model
+    target = base
+    if hasattr(base, 'model'):
+        target = base.model
+
+    backbone = getattr(target, 'backbone', None)
+    if backbone is None:
+        logger.warning('Pretrained check: backbone module not found for fingerprint logging.')
+        return
+
+    first_param = None
+    for _, p in backbone.named_parameters():
+        first_param = p
+        break
+
+    if first_param is None:
+        logger.warning('Pretrained check: backbone has no parameters.')
+        return
+
+    mean_abs = float(first_param.detach().abs().mean().cpu().item())
+    std = float(first_param.detach().std().cpu().item())
+    logger.info(
+        f'Pretrained check: backbone first-param stats mean_abs={mean_abs:.6e}, std={std:.6e}')
 
 def main(args):
     args = parse_args(args)
@@ -143,9 +209,12 @@ def main(args):
     meta['seed'] = args.seed
     meta['exp_name'] = osp.splitext(osp.basename(args.config))[0]
 
+    _log_pretrained_check(cfg, logger, strict=args.check_pretrained)
+
     model = build_train_model(
         cfg, train_cfg=cfg.get('train_cfg'), test_cfg=cfg.get('test_cfg'))
     model.init_weights()
+    _log_weight_fingerprint(model, logger)
 
     logger.info(model)
 

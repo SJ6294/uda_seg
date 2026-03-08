@@ -40,3 +40,10 @@ Expected under `seg/data`:
 - `MAS3K/train/high`, `MAS3K/train/Mask`
 - `Deepfish/train/high`, `Deepfish/train/Mask`
 - `Deepfish/valid/high`, `Deepfish/valid/Mask`
+
+
+Pretrained check (strict file existence) for mmseg training:
+
+```bash
+python tools/train.py configs/custom_mic/segformer_b5_mas3k_to_deepfish_minent_mic_sota.py --gpu-id 0 --check-pretrained
+```
