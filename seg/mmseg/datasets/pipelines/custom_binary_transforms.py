@@ -6,6 +6,22 @@ import numpy as np
 from ..builder import PIPELINES
 
 
+def _ensure_2d_mask(seg):
+    """Convert mask array to 2D if loaded as multi-channel.
+
+    Some datasets store binary masks as RGB PNGs. In that case `seg` can be
+    HxWx3 and cannot be copied into a 2D canvas directly.
+    """
+    if seg.ndim == 2:
+        return seg
+    if seg.ndim == 3:
+        if seg.shape[2] == 1:
+            return seg[:, :, 0]
+        # Use the first channel for RGB-like masks.
+        return seg[:, :, 0]
+    raise ValueError(f'Unsupported mask ndim={seg.ndim}, shape={seg.shape}')
+
+
 @PIPELINES.register_module()
 class RandomCropPadAtRandomLocation(object):
     """Random crop + random-location pad to fixed square size.
@@ -51,7 +67,7 @@ class RandomCropPadAtRandomLocation(object):
         results['pad_shape'] = img_canvas.shape
 
         for key in results.get('seg_fields', []):
-            seg = results[key]
+            seg = _ensure_2d_mask(results[key])
             seg_crop = seg[top:bottom, left:right]
             seg_canvas = np.full((out_h, out_w), self.seg_pad_val, dtype=seg.dtype)
             seg_canvas[paste_y:paste_y + crop_h, paste_x:paste_x + crop_w] = seg_crop
@@ -105,7 +121,7 @@ class ResizeKeepRatioNoUpscalePad(object):
         results['pad_shape'] = img_canvas.shape
 
         for key in results.get('seg_fields', []):
-            seg = results[key]
+            seg = _ensure_2d_mask(results[key])
             if new_w != w or new_h != h:
                 seg = mmcv.imresize(seg, (new_w, new_h), interpolation='nearest')
             seg_canvas = np.full((out_size, out_size), self.seg_pad_val, dtype=seg.dtype)
