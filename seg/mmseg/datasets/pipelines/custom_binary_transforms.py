@@ -22,6 +22,13 @@ def _ensure_2d_mask(seg):
     raise ValueError(f'Unsupported mask ndim={seg.ndim}, shape={seg.shape}')
 
 
+def _align_mask_to_image(seg, h, w):
+    """Ensure segmentation mask has same spatial size as image."""
+    if seg.shape[0] == h and seg.shape[1] == w:
+        return seg
+    return mmcv.imresize(seg, (w, h), interpolation='nearest')
+
+
 @PIPELINES.register_module()
 class RandomCropPadAtRandomLocation(object):
     """Random crop + random-location pad to fixed square size.
@@ -68,9 +75,11 @@ class RandomCropPadAtRandomLocation(object):
 
         for key in results.get('seg_fields', []):
             seg = _ensure_2d_mask(results[key])
+            seg = _align_mask_to_image(seg, h, w)
             seg_crop = seg[top:bottom, left:right]
+            seg_crop_h, seg_crop_w = seg_crop.shape[:2]
             seg_canvas = np.full((out_h, out_w), self.seg_pad_val, dtype=seg.dtype)
-            seg_canvas[paste_y:paste_y + crop_h, paste_x:paste_x + crop_w] = seg_crop
+            seg_canvas[paste_y:paste_y + seg_crop_h, paste_x:paste_x + seg_crop_w] = seg_crop
             results[key] = seg_canvas
 
         return results
@@ -122,6 +131,7 @@ class ResizeKeepRatioNoUpscalePad(object):
 
         for key in results.get('seg_fields', []):
             seg = _ensure_2d_mask(results[key])
+            seg = _align_mask_to_image(seg, h, w)
             if new_w != w or new_h != h:
                 seg = mmcv.imresize(seg, (new_w, new_h), interpolation='nearest')
             seg_canvas = np.full((out_size, out_size), self.seg_pad_val, dtype=seg.dtype)
