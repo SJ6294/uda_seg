@@ -243,6 +243,15 @@ class CustomDataset(Dataset):
             else:
                 gt_seg_map = mmcv.imread(
                     seg_map, flag='unchanged', backend='pillow')
+                if gt_seg_map.ndim == 3:
+                    gt_seg_map = gt_seg_map[:, :, 0]
+
+                # Binary training pipelines can use thresholded labels at load
+                # time; mirror that behavior here so evaluation reads matching
+                # class ids (0/1) instead of grayscale values (e.g., 0/255).
+                if self.CLASSES is not None and len(self.CLASSES) == 2 and \
+                        gt_seg_map.max() > 1:
+                    gt_seg_map = (gt_seg_map >= 128).astype(gt_seg_map.dtype)
             gt_seg_maps.append(gt_seg_map)
         return gt_seg_maps
 

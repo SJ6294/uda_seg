@@ -39,13 +39,15 @@ class EvalHook(_EvalHook):
         from mmseg.apis import single_gpu_test
         result_dir = osp.join(runner.work_dir, self.result_dir)
 
+        concat_prefix = f'iter_{runner.iter:06d}'
         results = single_gpu_test(
             runner.model,
             self.dataloader,
             show=False,
             efficient_test=self.efficient_test,
             save_concat=True,
-            concat_out_dir=result_dir)
+            concat_out_dir=result_dir,
+            concat_prefix=concat_prefix)
         runner.log_buffer.output['eval_iter_num'] = len(self.dataloader)
         key_score = self.evaluate(runner, results)
 
@@ -68,7 +70,21 @@ class EvalHook(_EvalHook):
         losses = []
         with torch.no_grad():
             for data in self.dataloader:
-                loss_dict = model(return_loss=True, **data)
+                try:
+                    loss_dict = model(return_loss=True, **data)
+                except TypeError as e:
+                    # UDA wrappers (e.g., MinEnt/DACS) can require extra
+                    # train-only keys such as target_img/target_img_metas,
+                    # which are not available in the pure validation dataloader.
+                    # In that case, skip val-loss computation instead of
+                    # crashing the whole training process.
+                    if 'target_img' in str(e) or 'target_img_metas' in str(e):
+                        mmcv.print_log(
+                            'Skip val_loss computation for UDA wrapper due to '
+                            'missing target_* inputs in val dataloader.',
+                            logger=runner.logger)
+                        return float('nan')
+                    raise
                 if isinstance(loss_dict, dict):
                     total_loss = 0
                     for val in loss_dict.values():
