@@ -70,7 +70,21 @@ class EvalHook(_EvalHook):
         losses = []
         with torch.no_grad():
             for data in self.dataloader:
-                loss_dict = model(return_loss=True, **data)
+                try:
+                    loss_dict = model(return_loss=True, **data)
+                except TypeError as e:
+                    # UDA wrappers (e.g., MinEnt/DACS) can require extra
+                    # train-only keys such as target_img/target_img_metas,
+                    # which are not available in the pure validation dataloader.
+                    # In that case, skip val-loss computation instead of
+                    # crashing the whole training process.
+                    if 'target_img' in str(e) or 'target_img_metas' in str(e):
+                        mmcv.print_log(
+                            'Skip val_loss computation for UDA wrapper due to '
+                            'missing target_* inputs in val dataloader.',
+                            logger=runner.logger)
+                        return float('nan')
+                    raise
                 if isinstance(loss_dict, dict):
                     total_loss = 0
                     for val in loss_dict.values():
