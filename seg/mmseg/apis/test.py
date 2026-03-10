@@ -64,7 +64,8 @@ def single_gpu_test(model,
                     efficient_test=False,
                     opacity=0.5,
                     save_concat=False,
-                    concat_out_dir=None):
+                    concat_out_dir=None,
+                    concat_prefix=None):
     """Test with single GPU.
 
     Args:
@@ -184,12 +185,16 @@ def single_gpu_test(model,
                 h, w = gt.shape[:2]
                 ori_img = mmcv.imresize(ori_img, (w, h))
 
-                pred_vis = np.stack([pred * 255, pred * 255, pred * 255], axis=-1)
                 gt_vis = np.stack([gt * 255, gt * 255, gt * 255], axis=-1)
-                concat_img = np.concatenate([ori_img, pred_vis, gt_vis], axis=1)
+                pred_vis = np.stack([pred * 255, pred * 255, pred * 255], axis=-1)
+                concat_img = np.concatenate([ori_img, gt_vis, pred_vis], axis=1)
 
-                base = osp.splitext(osp.basename(img_meta['ori_filename']))[0]
-                save_path = osp.join(concat_out_dir, f'{base}.png')
+                if concat_prefix is not None:
+                    save_name = f'{concat_prefix}_idx_{sample_idx:04d}.png'
+                else:
+                    base = osp.splitext(osp.basename(img_meta['ori_filename']))[0]
+                    save_name = f'{base}.png'
+                save_path = osp.join(concat_out_dir, save_name)
                 mmcv.imwrite(concat_img, save_path)
 
         dataset_index += batch_size

@@ -258,4 +258,4 @@ class MinEnt(UDADecorator):
 
         self.local_iter += 1
 
-        return {**src_log_vars, **trg_log_vars}
+        return {**src_log_vars, **trg_log_vars, **masked_log_vars}

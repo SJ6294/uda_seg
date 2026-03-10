@@ -64,6 +64,20 @@ def intersect_and_union(pred_label,
     else:
         label = torch.from_numpy(label)
 
+    # Robustly normalize accidental extra channel dimensions.
+    # Some datasets may store masks as HxWx3 PNGs even though semantic labels
+    # are single-channel class ids.
+    if pred_label.ndim == 3:
+        if pred_label.shape[0] == 1:
+            pred_label = pred_label[0]
+        elif pred_label.shape[-1] == 1:
+            pred_label = pred_label[..., 0]
+    if label.ndim == 3:
+        if label.shape[0] == 1:
+            label = label[0]
+        else:
+            label = label[..., 0]
+
     if label_map is not None:
         for old_id, new_id in label_map.items():
             label[label == old_id] = new_id
