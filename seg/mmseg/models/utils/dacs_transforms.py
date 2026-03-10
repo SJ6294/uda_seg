@@ -90,11 +90,17 @@ def gaussian_blur(blur, data=None, target=None):
 def get_class_masks(labels):
     class_masks = []
     for label in labels:
-        classes = torch.unique(labels)
-        nclasses = classes.shape[0]
-        class_choice = np.random.choice(
-            nclasses, int((nclasses + nclasses % 2) / 2), replace=False)
-        classes = classes[torch.Tensor(class_choice).long()]
+        classes = torch.unique(label)
+
+        # For binary segmentation (background/object), prefer object-guided
+        # class masks to avoid frequent all-background mixing.
+        if classes.numel() == 2 and (classes == 1).any():
+            classes = classes[classes == 1]
+        else:
+            nclasses = classes.shape[0]
+            class_choice = np.random.choice(
+                nclasses, int((nclasses + nclasses % 2) / 2), replace=False)
+            classes = classes[torch.Tensor(class_choice).long()]
         class_masks.append(generate_class_mask(label, classes).unsqueeze(0))
     return class_masks
 

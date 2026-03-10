@@ -19,11 +19,17 @@ from mmseg.models import build_segmentor
 
 
 def update_legacy_cfg(cfg):
-    # The saved json config does not differentiate between list and tuple
-    cfg.data.test.pipeline[1]['img_scale'] = tuple(
-        cfg.data.test.pipeline[1]['img_scale'])
-    cfg.data.val.pipeline[1]['img_scale'] = tuple(
-        cfg.data.val.pipeline[1]['img_scale'])
+    # The saved json config does not differentiate between list and tuple.
+    # Some custom configs (e.g., non-MultiScale val pipeline) don't define
+    # `img_scale` at pipeline[1], so guard the conversion.
+    for split in ['test', 'val']:
+        data_split = cfg.data.get(split, None)
+        if data_split is None or 'pipeline' not in data_split:
+            continue
+        pipeline = data_split.pipeline
+        if len(pipeline) > 1 and isinstance(pipeline[1], dict) and \
+                'img_scale' in pipeline[1]:
+            pipeline[1]['img_scale'] = tuple(pipeline[1]['img_scale'])
     # Support legacy checkpoints
     if cfg.model.decode_head.type == 'UniHead':
         cfg.model.decode_head.type = 'DAFormerHead'
