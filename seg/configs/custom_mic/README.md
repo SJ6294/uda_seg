@@ -33,6 +33,20 @@ python tools/train.py configs/custom_mic/segformer_b5_mas3k_to_deepfish_mic_sota
 python tools/train.py configs/custom_mic/segformer_b5_mas3k_to_deepfish_minent_mic_sota.py --gpu-id 0
 ```
 
+### SLURM (Linux) note
+
+If `sbatch` reports `ModuleNotFoundError: No module named 'mmseg'`, check two
+things:
+
+1. `cd` into the `seg` repo root before running `tools/train.py`.
+2. Use Linux syntax for `PYTHONPATH` export:
+
+```bash
+cd /scratch/x3438a03/ISJ/seg_mmseg/seg
+export PYTHONPATH="$(pwd):${PYTHONPATH}"
+srun -n 1 python tools/train.py configs/custom_mic/segformer_b5_mas3k_to_deepfish_minent_mic_sota.py --gpu-id 0 --check-pretrained
+```
+
 ## Data layout
 
 Expected under `seg/data`:

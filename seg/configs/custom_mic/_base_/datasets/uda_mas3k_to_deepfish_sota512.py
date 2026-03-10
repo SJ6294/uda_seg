@@ -46,6 +46,8 @@ val_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', binary_label=True, binary_threshold=128),
     dict(type='ResizeKeepRatioNoUpscalePad', out_size=512, pad_val=0, seg_pad_val=255),
+    # Keep `flip` metadata available for the default Collect meta_keys.
+    dict(type='RandomFlip', prob=0.0),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_semantic_seg']),

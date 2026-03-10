@@ -12,6 +12,12 @@ import os.path as osp
 import sys
 import time
 
+# Ensure local project package imports (mmseg) work even when PYTHONPATH is
+# not exported correctly in batch scripts.
+_PROJ_ROOT = osp.abspath(osp.join(osp.dirname(__file__), '..'))
+if _PROJ_ROOT not in sys.path:
+    sys.path.insert(0, _PROJ_ROOT)
+
 import mmcv
 import torch
 from mmcv.runner import init_dist
